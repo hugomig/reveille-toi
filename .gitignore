@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# build outputs of local native modules (modules/*)
+modules/*/android/build/
+modules/*/android/.cxx/
+modules/*/android/.gradle/
+modules/*/android/local.properties
+
+# Android emulator / adb bug reports
+bugreport-*.zip

@@ -1,28 +1,50 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { scheduleAlarms } from "@modules/alarm-scheduler";
+import { buildAlarmSpecs, computeOnceStart, isOnceExpired } from "@/lib/schedule";
 import { normalizeSeries } from "@/lib/series";
 import type { AlarmSeries, AlarmSeriesInput } from "@/types/alarm";
 
 const KEY = "alarmSeries.v1";
 
+/** Charge les séries ; désactive les séries « une fois » dont tous les réveils sont passés. */
 export async function loadSeries(): Promise<AlarmSeries[]> {
   const raw = await AsyncStorage.getItem(KEY);
-  const list = raw ? (JSON.parse(raw) as AlarmSeries[]) : [];
-  return list.map(normalizeSeries);
+  const list = (raw ? (JSON.parse(raw) as AlarmSeries[]) : []).map(normalizeSeries);
+  const now = Date.now();
+  if (list.some((s) => s.enabled && isOnceExpired(s, now))) {
+    const updated = list.map((s) => (s.enabled && isOnceExpired(s, now) ? { ...s, enabled: false } : s));
+    await saveAll(updated);
+    return updated;
+  }
+  return list;
 }
 
+/** Enregistre la liste et reprogramme les réveils sur le téléphone. */
 async function saveAll(list: AlarmSeries[]): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(list));
+  await scheduleAlarms(buildAlarmSpecs(list));
+}
+
+/** Reprogramme les réveils à partir des séries enregistrées (au lancement de l'appli). */
+export async function syncAlarms(): Promise<void> {
+  await scheduleAlarms(buildAlarmSpecs(await loadSeries()));
 }
 
 export async function getSeries(id: string): Promise<AlarmSeries | undefined> {
   return (await loadSeries()).find((s) => s.id === id);
 }
 
+/** Série « une fois » activée : (re)calcule la date de son premier réveil. */
+function withOnceStart<T extends AlarmSeriesInput>(s: T): T {
+  if (s.days.length > 0 || !s.enabled) return { ...s, onceStart: undefined };
+  return { ...s, onceStart: computeOnceStart(s) };
+}
+
 /** Crée la série si `id` est absent, sinon la met à jour. */
 export async function upsertSeries(raw: AlarmSeriesInput, id?: string): Promise<AlarmSeries> {
   const name = raw.name?.trim();
-  const input: AlarmSeriesInput = { ...raw, name: name || undefined };
+  const input = withOnceStart({ ...raw, name: name || undefined });
   const list = await loadSeries();
   if (id) {
     const updated: AlarmSeries = { ...input, id };
@@ -44,7 +66,7 @@ export async function saveSeriesOrder(list: AlarmSeries[]): Promise<void> {
 
 export async function setSeriesEnabled(id: string, enabled: boolean): Promise<void> {
   const list = await loadSeries();
-  await saveAll(list.map((s) => (s.id === id ? { ...s, enabled } : s)));
+  await saveAll(list.map((s) => (s.id === id ? withOnceStart({ ...s, enabled }) : s)));
 }
 
 export async function deleteSeries(id: string): Promise<void> {

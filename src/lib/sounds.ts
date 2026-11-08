@@ -1,14 +1,15 @@
-import type { AudioSource } from "expo-audio";
-
 import type { SoundId } from "@/types/alarm";
 
-/** Sonneries générées par scripts/generate-alarm-sounds.mjs. */
-export const SOUNDS: readonly { id: SoundId; label: string; source: AudioSource }[] = [
-  { id: "chime", label: "Carillon", source: require("../../assets/sounds/chime.wav") },
-  { id: "marimba", label: "Marimba", source: require("../../assets/sounds/marimba.wav") },
-  { id: "rise", label: "Montée", source: require("../../assets/sounds/rise.wav") },
-  { id: "beeps", label: "Bips", source: require("../../assets/sounds/beeps.wav") },
-  { id: "digital", label: "Digital", source: require("../../assets/sounds/digital.wav") },
+/**
+ * Sonneries disponibles. Les fichiers sont dans le module natif
+ * (modules/alarm-scheduler/android/src/main/res/raw), générés par scripts/generate-alarm-sounds.mjs.
+ */
+export const SOUNDS: readonly { id: SoundId; label: string }[] = [
+  { id: "chime", label: "Carillon" },
+  { id: "marimba", label: "Marimba" },
+  { id: "rise", label: "Montée" },
+  { id: "beeps", label: "Bips" },
+  { id: "digital", label: "Digital" },
 ];
 
 export function getSound(id: SoundId) {

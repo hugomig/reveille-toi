@@ -33,6 +33,11 @@ export type AlarmSeries = {
   enabled: boolean;
   /** Jours où la série sonne, triés. Vide = une seule fois, au prochain passage de l'heure. */
   days: Weekday[];
+  /**
+   * Série sans jours (« une fois ») : horodatage (ms) du premier réveil, calculé à
+   * l'enregistrement ou à l'activation. Absent pour une série répétée.
+   */
+  onceStart?: number;
   anchor: TimeAnchor;
   hour: number;
   minute: number;

@@ -8,6 +8,7 @@ import ReorderableList, {
 } from "react-native-reorderable-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PermissionBanner } from "@/components/PermissionBanner";
 import { formatDays, WEEKDAYS } from "@/lib/days";
 import { loadSeries, saveSeriesOrder, setSeriesEnabled } from "@/lib/storage";
 import { formatTime, getSeriesTimes } from "@/lib/time";
@@ -40,6 +41,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <PermissionBanner />
       <ReorderableList
         data={series}
         keyExtractor={(item) => item.id}

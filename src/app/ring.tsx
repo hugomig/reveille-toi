@@ -17,31 +17,47 @@ import { ShakeCounter } from "@/components/challenges/ShakeCounter";
 import { optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
 import { getSound } from "@/lib/sounds";
 import { formatTime } from "@/lib/time";
-import { useAlarmPlayback } from "@/lib/useAlarmPlayback";
 import { ringColors as C } from "@/theme";
 import { DEFAULT_ALARM, type DismissMode, type RingMode, type SoundId } from "@/types/alarm";
+import { startRinging, stopRinging } from "@modules/alarm-scheduler";
 
 type Params = {
+  id?: string;
+  seriesId?: string;
   /** Heure prévue du réveil, « HH:MM ». */
   time?: string;
   name?: string;
   ring?: RingMode;
   sound?: SoundId;
   dismiss?: DismissMode;
+  /** "1" : réveil déclenché par le téléphone (il sonne déjà). Sinon : test, on lance la sonnerie. */
+  fired?: string;
 };
 
 /** Écran plein écran affiché quand un réveil sonne. */
 export default function RingScreen() {
   const {
-    time,
-    name,
+    id = "test",
+    seriesId = "",
+    time = "",
+    name = "",
     ring = "progressive",
     sound = DEFAULT_ALARM.sound,
     dismiss = "button",
+    fired,
   } = useLocalSearchParams<Params>();
   const insets = useSafeAreaInsets();
-  const { stop } = useAlarmPlayback(ring, sound);
   const now = useClock();
+
+  // Test (bouton ▶) : on lance la sonnerie native, sur le volume « alarme ».
+  useEffect(() => {
+    if (fired === "1") return;
+    startRinging({ id, seriesId, time, name, ring, sound, dismiss });
+    return () => {
+      stopRinging();
+    };
+  }, [fired, id, seriesId, time, name, ring, sound, dismiss]);
+  const stop = () => stopRinging();
   const [inChallenge, setInChallenge] = useState(false);
   useKeepAwake();
 

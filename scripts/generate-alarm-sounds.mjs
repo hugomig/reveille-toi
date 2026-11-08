@@ -1,4 +1,4 @@
-// Génère les sonneries dans assets/sounds/*.wav (synthétisées ici : aucun droit d'auteur).
+// Génère les sonneries dans modules/alarm-scheduler/android/src/main/res/raw/*.wav (synthétisées ici : aucun droit d'auteur).
 // Chaque fichier est un motif court que l'appli joue en boucle.
 // Usage : node scripts/generate-alarm-sounds.mjs
 import { Buffer } from "node:buffer";
@@ -132,9 +132,10 @@ function toWav(samples) {
   return buf;
 }
 
-mkdirSync("assets/sounds", { recursive: true });
+const OUT = "modules/alarm-scheduler/android/src/main/res/raw";
+mkdirSync(OUT, { recursive: true });
 for (const [id, make] of Object.entries({ beeps, chime, marimba, digital, rise })) {
   const wav = toWav(make());
-  writeFileSync(`assets/sounds/${id}.wav`, wav);
-  console.log(`assets/sounds/${id}.wav (${(wav.length / 1024).toFixed(0)} Ko)`);
+  writeFileSync(`${OUT}/${id}.wav`, wav);
+  console.log(`${OUT}/${id}.wav (${(wav.length / 1024).toFixed(0)} Ko)`);
 }

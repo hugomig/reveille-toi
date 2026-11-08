@@ -2,9 +2,12 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { useAlarmLauncher } from "@/lib/useAlarmLauncher";
 import { colors } from "@/theme";
 
 export default function RootLayout() {
+  useAlarmLauncher();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
