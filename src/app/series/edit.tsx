@@ -21,6 +21,7 @@ import { SettingButton } from "@/components/SettingButton";
 import { Stepper } from "@/components/Stepper";
 import { DISMISS_OPTIONS, optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
 import { formatDays } from "@/lib/days";
+import { computeOnceStart } from "@/lib/schedule";
 import { resizeAlarms } from "@/lib/series";
 import { getSound } from "@/lib/sounds";
 import { deleteSeries, getSeries, upsertSeries } from "@/lib/storage";
@@ -46,6 +47,28 @@ const ANCHOR_OPTIONS = [
   { value: "last", label: "Dernier réveil" },
 ] as const satisfies readonly { value: TimeAnchor; label: string }[];
 
+type RepeatMode = "repeat" | "once";
+const REPEAT_OPTIONS = [
+  { value: "repeat", label: "Récurrent" },
+  { value: "once", label: "Une seule fois" },
+] as const satisfies readonly { value: RepeatMode; label: string }[];
+
+/** « Sonnera une seule fois : demain à 07:00 » (date du premier réveil de la série). */
+function describeOnce(form: AlarmSeriesInput): string {
+  const start = new Date(computeOnceStart(form));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((new Date(start).setHours(0, 0, 0, 0) - today.getTime()) / 86_400_000);
+  const day =
+    dayDiff === 0
+      ? "aujourd'hui"
+      : dayDiff === 1
+        ? "demain"
+        : start.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const time = formatTime({ hour: start.getHours(), minute: start.getMinutes() });
+  return `Sonnera une seule fois : ${day} à ${time}${form.count > 1 ? " (premier réveil)" : ""}, puis la série se désactive.`;
+}
+
 /** Création (sans `id`) ou édition (avec `id`) d'une série de réveils. */
 export default function EditSeriesScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -57,6 +80,11 @@ export default function EditSeriesScreen() {
   const [saving, setSaving] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [sheet, setSheet] = useState<OpenSheet>(null);
+  // Une série sans jours est « une seule fois ». Le mode est gardé à part pour qu'une série
+  // récurrente dont on décoche tous les jours reste « Récurrent » (et demande un jour).
+  const [repeat, setRepeat] = useState<RepeatMode>("repeat");
+  // Jours choisis avant de passer en « une seule fois », restaurés si on revient en récurrent.
+  const [savedDays, setSavedDays] = useState(DEFAULT_SERIES.days);
 
   useEffect(() => {
     if (!id) return;
@@ -64,10 +92,25 @@ export default function EditSeriesScreen() {
       if (existing) {
         const { id: _id, ...rest } = existing;
         setForm(rest);
+        setRepeat(rest.days.length > 0 ? "repeat" : "once");
       }
       setLoading(false);
     });
   }, [id]);
+
+  const changeRepeat = (mode: RepeatMode) => {
+    if (mode === repeat) return;
+    setRepeat(mode);
+    if (mode === "once") {
+      if (form.days.length > 0) setSavedDays(form.days);
+      setForm((f) => ({ ...f, days: [] }));
+    } else {
+      setForm((f) => ({ ...f, days: savedDays.length > 0 ? savedDays : DEFAULT_SERIES.days }));
+    }
+  };
+
+  /** Récurrent sans aucun jour : rien à programmer, on n'enregistre pas. */
+  const missingDays = repeat === "repeat" && form.days.length === 0;
 
   const update = <K extends keyof AlarmSeriesInput>(key: K, value: AlarmSeriesInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -162,17 +205,24 @@ export default function EditSeriesScreen() {
           </Pressable>
         </View>
 
-        {/* Jours de répétition */}
+        {/* Récurrent (jours de répétition) ou une seule fois */}
         <View style={styles.card}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Jours</Text>
-            <Text style={styles.labelValue}>{formatDays(form.days)}</Text>
-          </View>
-          <DaySelector value={form.days} onChange={(days) => update("days", days)} />
-          {form.days.length === 0 && (
-            <Text style={styles.hint}>
-              Aucun jour choisi : la série sonnera une seule fois, au prochain passage de l&apos;heure.
-            </Text>
+          <SegmentedToggle options={REPEAT_OPTIONS} value={repeat} onChange={changeRepeat} />
+          {repeat === "repeat" ? (
+            <>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Jours</Text>
+                <Text style={styles.labelValue}>
+                  {form.days.length === 0 ? "Aucun" : formatDays(form.days)}
+                </Text>
+              </View>
+              <DaySelector value={form.days} onChange={(days) => update("days", days)} />
+              {form.days.length === 0 && (
+                <Text style={[styles.hint, styles.hintError]}>Choisis au moins un jour.</Text>
+              )}
+            </>
+          ) : (
+            <Text style={styles.hint}>{describeOnce(form)}</Text>
           )}
         </View>
 
@@ -267,9 +317,13 @@ export default function EditSeriesScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
           accessibilityRole="button"
-          disabled={saving}
+          disabled={saving || missingDays}
           onPress={save}
-          style={({ pressed }) => [styles.saveButton, (pressed || saving) && styles.pressed]}
+          style={({ pressed }) => [
+            styles.saveButton,
+            (pressed || saving) && styles.pressed,
+            missingDays && styles.saveDisabled,
+          ]}
         >
           <Text style={styles.saveText}>{isNew ? "Créer la série" : "Enregistrer"}</Text>
         </Pressable>
@@ -328,6 +382,8 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   labelValue: { fontSize: 15, fontWeight: "600", color: colors.primary },
   hint: { fontSize: 13, color: colors.textMuted },
+  hintError: { color: colors.danger },
+  saveDisabled: { opacity: 0.4 },
   nameInput: {
     fontSize: 17,
     color: colors.text,
