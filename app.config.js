@@ -1,7 +1,7 @@
 // Configuration dynamique : complète app.json selon la variante de l'appli.
 //
-// - Par défaut : « Réveille toi » (com.reveil.app), la version de tous les jours.
-// - APP_VARIANT=development : « Réveille toi (dev) » (com.reveil.app.dev), pour développer
+// - Par défaut : « Réveille toi » (com.hugomig.reveilletoi), la version de tous les jours.
+// - APP_VARIANT=development : « Réveille toi (dev) » (com.hugomig.reveilletoi.dev), pour développer
 //   avec le rechargement en direct. Identifiant différent : les deux applis s'installent côte
 //   à côte, chacune avec ses propres séries de réveils.
 const IS_DEV = process.env.APP_VARIANT === "development";

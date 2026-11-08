@@ -48,3 +48,6 @@ modules/*/android/local.properties
 
 # Android emulator / adb bug reports
 bugreport-*.zip
+
+# signing key and passwords (never commit)
+credentials/
