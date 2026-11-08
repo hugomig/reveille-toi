@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "reveil",
+    "name": "Réveilles-toi",
     "slug": "reveil",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,6 +27,9 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-router"
-    ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
