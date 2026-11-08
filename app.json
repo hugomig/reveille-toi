@@ -26,7 +26,8 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
-      "expo-router"
+      "expo-router",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

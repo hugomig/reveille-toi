@@ -7,12 +7,17 @@ export type RingMode = "progressive" | "loud" | "vibrate";
 /** Façon dont on désactive le réveil. */
 export type DismissMode = "button" | "math" | "shake";
 
+/** Sonneries disponibles (fichiers dans assets/sounds, voir src/lib/sounds.ts). */
+export type SoundId = "beeps" | "chime" | "marimba" | "digital" | "rise";
+
 /** Jour de la semaine, lundi = 0 … dimanche = 6. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Réglages propres à un réveil de la série. */
 export type AlarmSettings = {
   ring: RingMode;
+  /** Sonnerie jouée (ignorée en mode « Vibration seule »). */
+  sound: SoundId;
   dismiss: DismissMode;
 };
 
@@ -45,7 +50,11 @@ export const COUNT_MAX = 20;
 export const INTERVAL_MIN = 1;
 export const INTERVAL_MAX = 60;
 
-export const DEFAULT_ALARM: AlarmSettings = { ring: "progressive", dismiss: "button" };
+export const DEFAULT_ALARM: AlarmSettings = {
+  ring: "progressive",
+  sound: "chime",
+  dismiss: "button",
+};
 
 /** Du lundi au vendredi. */
 export const DEFAULT_DAYS: Weekday[] = [0, 1, 2, 3, 4];

@@ -10,3 +10,14 @@ export const colors = {
   track: "#ECEEF4",
   danger: "#D92D20",
 };
+
+/** Couleurs de l'écran de sonnerie (fond sombre). */
+export const ringColors = {
+  background: "#12132A",
+  surface: "#1E2042",
+  text: "#FFFFFF",
+  textMuted: "#A9ABC9",
+  accent: "#7C74FF",
+  success: "#4ADE80",
+  error: "#F87171",
+};

@@ -18,6 +18,15 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: "Mes réveils" }} />
         <Stack.Screen name="series/edit" options={{ title: "Série de réveils" }} />
+        <Stack.Screen
+          name="ring"
+          options={{
+            headerShown: false,
+            presentation: "fullScreenModal",
+            animation: "fade",
+            gestureEnabled: false,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

@@ -15,11 +15,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DaySelector } from "@/components/DaySelector";
 import { OptionSheet } from "@/components/OptionSheet";
+import { RingSheet } from "@/components/RingSheet";
 import { SegmentedToggle } from "@/components/SegmentedToggle";
 import { Stepper } from "@/components/Stepper";
 import { DISMISS_OPTIONS, optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
 import { formatDays } from "@/lib/days";
 import { resizeAlarms } from "@/lib/series";
+import { getSound } from "@/lib/sounds";
 import { deleteSeries, getSeries, upsertSeries } from "@/lib/storage";
 import { formatTime, getSeriesTimes } from "@/lib/time";
 import { colors } from "@/theme";
@@ -32,7 +34,6 @@ import {
   type AlarmSeriesInput,
   type AlarmSettings,
   type DismissMode,
-  type RingMode,
   type TimeAnchor,
 } from "@/types/alarm";
 
@@ -216,6 +217,7 @@ export default function EditSeriesScreen() {
                     <SettingButton
                       label="Sonnerie"
                       value={optionLabel(RING_OPTIONS, alarm.ring)}
+                      detail={alarm.ring === "vibrate" ? undefined : getSound(alarm.sound).label}
                       onPress={() => setSheet({ index: i, kind: "ring" })}
                     />
                     <SettingButton
@@ -224,6 +226,26 @@ export default function EditSeriesScreen() {
                       onPress={() => setSheet({ index: i, kind: "dismiss" })}
                     />
                   </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Tester le réveil de ${formatTime(t)}`}
+                    hitSlop={6}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/ring",
+                        params: {
+                          time: formatTime(t),
+                          name: form.name?.trim() ?? "",
+                          ring: alarm.ring,
+                          sound: alarm.sound,
+                          dismiss: alarm.dismiss,
+                        },
+                      })
+                    }
+                    style={({ pressed }) => [styles.testButton, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.testIcon}>▶</Text>
+                  </Pressable>
                 </View>
               );
             })}
@@ -252,19 +274,18 @@ export default function EditSeriesScreen() {
         </Pressable>
       </View>
 
-      <OptionSheet<RingMode>
-        visible={sheet?.kind === "ring"}
-        title="Sonnerie"
-        subtitle={sheet ? `Réveil de ${formatTime(times[sheet.index])}` : undefined}
-        options={RING_OPTIONS}
-        value={sheet ? form.alarms[sheet.index].ring : "progressive"}
-        showApplyToAll={form.count > 1}
-        onSelect={(ring, all) => {
-          if (sheet) updateAlarm(sheet.index, { ring }, all);
-          setSheet(null);
-        }}
-        onClose={() => setSheet(null)}
-      />
+      {sheet?.kind === "ring" && (
+        <RingSheet
+          subtitle={`Réveil de ${formatTime(times[sheet.index])}`}
+          value={form.alarms[sheet.index]}
+          showApplyToAll={form.count > 1}
+          onSelect={(choice, all) => {
+            updateAlarm(sheet.index, choice, all);
+            setSheet(null);
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
       <OptionSheet<DismissMode>
         visible={sheet?.kind === "dismiss"}
         title="Arrêt du réveil"
@@ -371,6 +392,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
+  testButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  testIcon: { color: colors.onPrimary, fontSize: 13, marginLeft: 2 },
   settingLabel: { fontSize: 11, color: colors.textMuted, fontWeight: "500" },
   settingValue: { fontSize: 14, color: colors.primary, fontWeight: "600" },
   settingDetail: { fontSize: 12, color: colors.primary },
