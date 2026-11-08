@@ -12,7 +12,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DISMISS_OPTIONS, optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
+import { MathChallenge } from "@/components/challenges/MathChallenge";
+import { ShakeCounter } from "@/components/challenges/ShakeCounter";
+import { optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
 import { getSound } from "@/lib/sounds";
 import { formatTime } from "@/lib/time";
 import { useAlarmPlayback } from "@/lib/useAlarmPlayback";
@@ -40,6 +42,7 @@ export default function RingScreen() {
   const insets = useSafeAreaInsets();
   const { stop } = useAlarmPlayback(ring, sound);
   const now = useClock();
+  const [inChallenge, setInChallenge] = useState(false);
   useKeepAwake();
 
   // Le bouton « retour » d'Android ne doit pas couper le réveil.
@@ -55,11 +58,23 @@ export default function RingScreen() {
   };
 
   const clock = formatTime({ hour: now.getHours(), minute: now.getMinutes() });
+  const padding = { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 };
+
+  // Calcul en cours : la sonnerie continue tant qu'il n'est pas réussi.
+  if (inChallenge) {
+    return (
+      <View style={[styles.container, styles.challengeContainer, padding]}>
+        <StatusBar style="light" />
+        <Text style={styles.clockSmall}>{clock}</Text>
+        <View style={styles.challenge}>
+          <MathChallenge onComplete={dismissAlarm} />
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View
-      style={[styles.container, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 32 }]}
-    >
+    <View style={[styles.container, padding, { paddingTop: insets.top + 48 }]}>
       <StatusBar style="light" />
 
       <View style={styles.top}>
@@ -81,20 +96,20 @@ export default function RingScreen() {
         </View>
       </View>
 
-      <View style={styles.bottom}>
-        {dismiss !== "button" && (
-          <Text style={styles.challengeHint}>
-            Défi prévu : {optionLabel(DISMISS_OPTIONS, dismiss)} (arrive à l&apos;étape 4)
-          </Text>
-        )}
+      {dismiss === "shake" ? (
+        // Pas de bouton : on secoue directement, un petit compteur suit la progression.
+        <ShakeCounter onComplete={dismissAlarm} />
+      ) : (
         <Pressable
           accessibilityRole="button"
-          onPress={dismissAlarm}
+          onPress={dismiss === "math" ? () => setInChallenge(true) : dismissAlarm}
           style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}
         >
-          <Text style={styles.stopText}>Arrêter</Text>
+          <Text style={styles.stopText}>
+            {dismiss === "math" ? "Résoudre pour arrêter" : "Arrêter"}
+          </Text>
         </Pressable>
-      </View>
+      )}
     </View>
   );
 }
@@ -138,8 +153,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: "space-between",
   },
+  challengeContainer: { justifyContent: "flex-start", alignItems: "center", gap: 24 },
+  challenge: { flex: 1, width: "100%", justifyContent: "center" },
   top: { alignItems: "center", gap: 4 },
   clock: { color: C.text, fontSize: 80, fontWeight: "200", fontVariant: ["tabular-nums"] },
+  clockSmall: { color: C.textMuted, fontSize: 22, fontWeight: "500", fontVariant: ["tabular-nums"] },
   date: { color: C.textMuted, fontSize: 17, textTransform: "capitalize" },
   middle: { alignItems: "center", gap: 28 },
   pulseWrap: { width: 140, height: 140, alignItems: "center", justifyContent: "center" },
@@ -155,8 +173,6 @@ const styles = StyleSheet.create({
   name: { color: C.text, fontSize: 24, fontWeight: "600" },
   scheduled: { color: C.textMuted, fontSize: 17 },
   mode: { color: C.textMuted, fontSize: 14 },
-  bottom: { gap: 16 },
-  challengeHint: { color: C.textMuted, fontSize: 14, textAlign: "center" },
   stopButton: {
     backgroundColor: C.text,
     borderRadius: 999,
