@@ -4,13 +4,30 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/** Reçoit le déclenchement d'un réveil : programme le suivant et lance la sonnerie. */
+/** Reçoit un déclenchement : programme le suivant, puis fait sonner / notifie selon le type. */
 class AlarmReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     if (intent.action != AlarmScheduler.ACTION_FIRE) return
     val id = intent.data?.schemeSpecificPart ?: return
+    val now = System.currentTimeMillis()
     val spec = AlarmScheduler.onFired(context, id) ?: return
-    AlarmService.start(context, spec.payload.toString(), fired = true)
+
+    when (spec.kind) {
+      AlarmSpec.KIND_REMINDER -> {
+        if (!AlarmScheduler.hasAlarmOnTargetDay(context, now, spec.targetOffsetDays)) {
+          Reminders.notify(context, spec.payload.optString("name"))
+        }
+      }
+      AlarmSpec.KIND_BACKUP -> {
+        if (!AlarmScheduler.hasAlarmOnTargetDay(context, now, spec.targetOffsetDays)) {
+          AlarmService.start(context, spec.payload.toString(), fired = true)
+        }
+      }
+      else -> {
+        AlarmScheduler.recordFired(context, now)
+        AlarmService.start(context, spec.payload.toString(), fired = true)
+      }
+    }
   }
 }
 

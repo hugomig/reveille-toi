@@ -11,6 +11,10 @@ import java.util.Calendar
  * - Réveil unique : [at] (horodatage en ms) ; ignoré s'il est passé.
  *
  * [payload] contient ce dont l'écran de sonnerie a besoin (heure affichée, nom, sonnerie, défi…).
+ *
+ * [kind] : "alarm" (réveil d'une série), "reminder" (notification « pas de réveil prévu ») ou
+ * "backup" (alarme de secours). Les deux derniers ne se déclenchent que s'il n'y a aucun réveil
+ * le jour visé (jour de déclenchement + [targetOffsetDays]).
  */
 data class AlarmSpec(
   val id: String,
@@ -19,7 +23,25 @@ data class AlarmSpec(
   val days: List<Int>,
   val at: Long?,
   val payload: JSONObject,
+  val kind: String = KIND_ALARM,
+  val targetOffsetDays: Int = 0,
 ) {
+  val isAlarm: Boolean get() = kind == KIND_ALARM
+
+  /** Ce réveil sonne-t-il dans [[start], [end]) ? La fenêtre doit tenir dans une même journée. */
+  fun ringsBetween(start: Long, end: Long): Boolean {
+    if (at != null) return at in start until end
+    val c = Calendar.getInstance().apply {
+      timeInMillis = start
+      set(Calendar.HOUR_OF_DAY, hour)
+      set(Calendar.MINUTE, minute)
+      set(Calendar.SECOND, 0)
+      set(Calendar.MILLISECOND, 0)
+    }
+    val weekday = (c.get(Calendar.DAY_OF_WEEK) + 5) % 7
+    return (days.isEmpty() || weekday in days) && c.timeInMillis in start until end
+  }
+
   /** Prochain déclenchement strictement après [now], ou null s'il n'y en a plus. */
   fun nextTrigger(now: Long): Long? {
     if (at != null) return if (at > now) at else null
@@ -53,9 +75,15 @@ data class AlarmSpec(
     put("days", JSONArray(days))
     if (at != null) put("at", at)
     put("payload", payload)
+    put("kind", kind)
+    put("targetOffsetDays", targetOffsetDays)
   }
 
   companion object {
+    const val KIND_ALARM = "alarm"
+    const val KIND_REMINDER = "reminder"
+    const val KIND_BACKUP = "backup"
+
     fun fromJson(o: JSONObject): AlarmSpec {
       val daysJson = o.optJSONArray("days") ?: JSONArray()
       return AlarmSpec(
@@ -65,6 +93,8 @@ data class AlarmSpec(
         days = List(daysJson.length()) { daysJson.getInt(it) },
         at = if (o.has("at") && !o.isNull("at")) o.getLong("at") else null,
         payload = o.optJSONObject("payload") ?: JSONObject(),
+        kind = o.optString("kind", KIND_ALARM).ifEmpty { KIND_ALARM },
+        targetOffsetDays = o.optInt("targetOffsetDays", 0),
       )
     }
 

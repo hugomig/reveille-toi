@@ -29,6 +29,14 @@ export type RingingAlarm = AlarmPayload & {
  */
 export type AlarmSpec = {
   id: string;
+  /**
+   * - "alarm" (défaut) : un réveil d'une série ;
+   * - "reminder" : notification « pas de réveil prévu », seulement si aucun réveil le jour visé ;
+   * - "backup" : alarme de secours (vibreur), seulement si aucun réveil le jour visé.
+   */
+  kind?: "alarm" | "reminder" | "backup";
+  /** reminder / backup : jour visé = jour de déclenchement + ce décalage (en jours). */
+  targetOffsetDays?: number;
   hour: number;
   minute: number;
   days: number[];

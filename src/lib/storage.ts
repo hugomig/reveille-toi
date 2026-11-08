@@ -1,9 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { scheduleAlarms } from "@modules/alarm-scheduler";
+import { buildReminderSpecs, loadReminderSettings, saveReminderSettingsRaw } from "@/lib/reminders";
 import { buildAlarmSpecs, computeOnceStart, isOnceExpired } from "@/lib/schedule";
 import { normalizeSeries } from "@/lib/series";
 import type { AlarmSeries, AlarmSeriesInput } from "@/types/alarm";
+import type { ReminderSettings } from "@/types/reminders";
 
 const KEY = "alarmSeries.v1";
 
@@ -20,15 +22,27 @@ export async function loadSeries(): Promise<AlarmSeries[]> {
   return list;
 }
 
+/** Programme sur le téléphone les réveils des séries et les rappels (remplace tout). */
+async function scheduleAll(list: AlarmSeries[], reminders?: ReminderSettings): Promise<void> {
+  const settings = reminders ?? (await loadReminderSettings());
+  await scheduleAlarms([...buildAlarmSpecs(list), ...buildReminderSpecs(settings)]);
+}
+
 /** Enregistre la liste et reprogramme les réveils sur le téléphone. */
 async function saveAll(list: AlarmSeries[]): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(list));
-  await scheduleAlarms(buildAlarmSpecs(list));
+  await scheduleAll(list);
 }
 
 /** Reprogramme les réveils à partir des séries enregistrées (au lancement de l'appli). */
 export async function syncAlarms(): Promise<void> {
-  await scheduleAlarms(buildAlarmSpecs(await loadSeries()));
+  await scheduleAll(await loadSeries());
+}
+
+/** Enregistre les réglages des rappels et reprogramme. */
+export async function saveReminderSettings(settings: ReminderSettings): Promise<void> {
+  await saveReminderSettingsRaw(settings);
+  await scheduleAll(await loadSeries(), settings);
 }
 
 export async function getSeries(id: string): Promise<AlarmSeries | undefined> {

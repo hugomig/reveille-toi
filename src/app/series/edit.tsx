@@ -17,6 +17,7 @@ import { DaySelector } from "@/components/DaySelector";
 import { OptionSheet } from "@/components/OptionSheet";
 import { RingSheet } from "@/components/RingSheet";
 import { SegmentedToggle } from "@/components/SegmentedToggle";
+import { SettingButton } from "@/components/SettingButton";
 import { Stepper } from "@/components/Stepper";
 import { DISMISS_OPTIONS, optionLabel, RING_OPTIONS } from "@/lib/alarmOptions";
 import { formatDays } from "@/lib/days";
@@ -316,38 +317,6 @@ export default function EditSeriesScreen() {
   );
 }
 
-function SettingButton({
-  label,
-  value,
-  detail,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  /** Précision affichée sous la valeur (ex. nom de la sonnerie). */
-  detail?: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label} : ${value}${detail ? `, ${detail}` : ""}. Modifier`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.settingButton, pressed && styles.pressed]}
-    >
-      <Text style={styles.settingLabel}>{label}</Text>
-      <Text style={styles.settingValue} numberOfLines={1}>
-        {value} ▾
-      </Text>
-      {detail ? (
-        <Text style={styles.settingDetail} numberOfLines={1}>
-          {detail}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -385,13 +354,6 @@ const styles = StyleSheet.create({
     width: 58,
   },
   alarmSettings: { flex: 1, flexDirection: "row", gap: 8 },
-  settingButton: {
-    flex: 1,
-    backgroundColor: colors.primarySoft,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
   testButton: {
     width: 36,
     height: 36,
@@ -401,9 +363,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   testIcon: { color: colors.onPrimary, fontSize: 13, marginLeft: 2 },
-  settingLabel: { fontSize: 11, color: colors.textMuted, fontWeight: "500" },
-  settingValue: { fontSize: 14, color: colors.primary, fontWeight: "600" },
-  settingDetail: { fontSize: 12, color: colors.primary },
   deleteButton: { alignItems: "center", paddingVertical: 14 },
   deleteText: { color: colors.danger, fontSize: 16, fontWeight: "600" },
   footer: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: colors.background },

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import java.util.Calendar
 
 /** Programmation des réveils avec AlarmManager, et sauvegarde pour les reprogrammer au redémarrage. */
 object AlarmScheduler {
@@ -71,11 +72,53 @@ object AlarmScheduler {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
       // Sans l'autorisation « alarmes exactes » : réveil approximatif plutôt que rien.
       am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, operation)
-    } else {
+    } else if (spec.isAlarm) {
       // setAlarmClock : prioritaire, ignore les économies d'énergie, affiche ⏰ dans la barre d'état.
       am.setAlarmClock(AlarmManager.AlarmClockInfo(trigger, openAppIntent(context)), operation)
+    } else {
+      // Rappels et alarme de secours : exacts, mais pas affichés comme « prochain réveil »
+      // (ils ne se déclenchent que s'il n'y a pas de réveil).
+      am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, operation)
     }
     return true
+  }
+
+  // --- Y a-t-il un réveil le jour visé ? -------------------------------------
+
+  private const val KEY_FIRED = "firedAlarms"
+  private const val WINDOW_START_HOUR = 4
+  private const val WINDOW_END_HOUR = 16
+
+  /** Mémorise qu'un réveil a sonné (les réveils uniques sont retirés une fois déclenchés). */
+  @Synchronized
+  fun recordFired(context: Context, at: Long) {
+    val p = prefs(context)
+    val twoDaysAgo = at - 2 * 24 * 3600 * 1000L
+    val kept = (p.getString(KEY_FIRED, "") ?: "").split(",")
+      .mapNotNull { it.toLongOrNull() }
+      .filter { it >= twoDaysAgo }
+    p.edit().putString(KEY_FIRED, (kept + at).joinToString(",")).apply()
+  }
+
+  /**
+   * Un réveil sonne-t-il (ou a-t-il sonné) le jour visé entre 04:00 et 16:00 ?
+   * Jour visé = jour de [firedAt] + [offsetDays].
+   */
+  fun hasAlarmOnTargetDay(context: Context, firedAt: Long, offsetDays: Int): Boolean {
+    val day = Calendar.getInstance().apply {
+      timeInMillis = firedAt
+      add(Calendar.DAY_OF_YEAR, offsetDays)
+      set(Calendar.MINUTE, 0)
+      set(Calendar.SECOND, 0)
+      set(Calendar.MILLISECOND, 0)
+    }
+    val start = (day.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, WINDOW_START_HOUR) }.timeInMillis
+    val end = (day.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, WINDOW_END_HOUR) }.timeInMillis
+
+    if (load(context).any { it.isAlarm && it.ringsBetween(start, end) }) return true
+    return (prefs(context).getString(KEY_FIRED, "") ?: "").split(",")
+      .mapNotNull { it.toLongOrNull() }
+      .any { it in start until end }
   }
 
   private fun cancel(context: Context, id: String) {
